@@ -6,3 +6,6 @@ tmp/
 .air.log
 .air.pid
 mutagen.yml.lock
+
+# Compiled binaries
+*.exe
