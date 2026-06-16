@@ -2,30 +2,20 @@ package test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 
-	"app-mobile-downloader/templates"
+	"app-mobile-downloader/internal/dev/ui"
 )
 
 const CoverageDir = "tmp/coverage"
 
-func RenderResultAndDashboard(w io.Writer, ctx context.Context, state templates.TestRunState) error {
-	if err := templates.DashboardStats(state).Render(ctx, w); err != nil {
-		return err
-	}
-	if err := templates.TestResult(state.Success, state.Output, state.CoverPath, state.CoverPercent).Render(ctx, w); err != nil {
-		return err
-	}
-	return nil
-}
+
 
 func FilterCoverageFile(inputPath, outputPath string) error {
 	data, err := os.ReadFile(inputPath)
@@ -95,20 +85,20 @@ func CoveragePercentFromProfile(root, profilePath string, newCommand func(string
 	return ParseCoverPercent(string(out)), nil
 }
 
-func LoadLastRunState() templates.TestRunState {
+func LoadLastRunState() ui.TestRunState {
 	path := filepath.Join(CoverageDir, "last_run.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return templates.TestRunState{}
+		return ui.TestRunState{}
 	}
-	var state templates.TestRunState
+	var state ui.TestRunState
 	if err := json.Unmarshal(data, &state); err != nil {
-		return templates.TestRunState{}
+		return ui.TestRunState{}
 	}
 	return state
 }
 
-func SaveLastRunState(state templates.TestRunState) error {
+func SaveLastRunState(state ui.TestRunState) error {
 	path := filepath.Join(CoverageDir, "last_run.json")
 	data, err := json.Marshal(state)
 	if err != nil {
@@ -137,3 +127,5 @@ func GenerateHTMLReport(root, filteredProfile, htmlReport string) error {
 	cmd.Env = os.Environ()
 	return cmd.Run()
 }
+
+

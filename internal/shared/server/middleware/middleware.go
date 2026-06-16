@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"app-mobile-downloader/internal/shared"
 	"app-mobile-downloader/internal/shared/access"
-	outdb "app-mobile-downloader/internal/adapter/out/db"
 	"app-mobile-downloader/internal/shared/configuration"
+	"app-mobile-downloader/internal/shared/infrastructure/postgresql"
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
@@ -27,7 +28,7 @@ const (
 )
 
 type sessionStore interface {
-	FindActiveSessionByID(sessionID string) (outdb.SessionRecord, error)
+	FindActiveSessionByID(sessionID string) (postgresql.SessionRecord, error)
 	UpdateSessionTokens(sessionID, accessToken, refreshToken, idToken string, expiresAt *time.Time) error
 }
 
@@ -37,7 +38,7 @@ func JWTMiddleware(
 	conf configuration.Conf,
 ) func(http.Handler) http.Handler {
 	issuer := strings.TrimSpace(conf.OIDCIssuer)
-	audience := firstNonEmpty(strings.TrimSpace(conf.JWTAudience), strings.TrimSpace(conf.OIDCClientID))
+	audience := shared.FirstNonEmpty(strings.TrimSpace(conf.JWTAudience), strings.TrimSpace(conf.OIDCClientID))
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -116,16 +117,16 @@ func JWTClaimsFromContext(ctx context.Context) (jwt.MapClaims, bool) {
 func PrincipalFromClaims(claims jwt.MapClaims) Principal {
 	subject, _ := claims["sub"].(string)
 	subject = strings.TrimSpace(subject)
-	grantType := normalizeGrantType(firstStringClaim(claims, "gty", "grant_type"))
-	tokenUse := strings.ToLower(strings.TrimSpace(firstStringClaim(claims, "token_use", "type")))
+	grantType := normalizeGrantType(shared.FirstStringClaim(claims, "gty", "grant_type"))
+	tokenUse := strings.ToLower(strings.TrimSpace(shared.FirstStringClaim(claims, "token_use", "type")))
 	isMachine := grantType == "client_credentials" || tokenUse == "machine" || tokenUse == "application"
 
-	machineClientID := firstStringClaim(claims, "client_id", "azp", "cid")
+	machineClientID := shared.FirstStringClaim(claims, "client_id", "azp", "cid")
 	if strings.TrimSpace(machineClientID) == "" && isMachine {
 		machineClientID = firstAudienceClaim(claims)
 	}
 	if strings.TrimSpace(machineClientID) == "" {
-		machineClientID = firstNonEmptyMachineID(subject, firstStringClaim(claims, "name", "id"))
+		machineClientID = firstNonEmptyMachineID(subject, shared.FirstStringClaim(claims, "name", "id"))
 	}
 	if subject == "" && strings.TrimSpace(machineClientID) != "" {
 		isMachine = true
@@ -176,7 +177,7 @@ func claimsFromSessionCookie(r *http.Request, w http.ResponseWriter, store sessi
 	return claims, true
 }
 
-func refreshSessionTokens(store sessionStore, conf configuration.Conf, rec *outdb.SessionRecord) error {
+func refreshSessionTokens(store sessionStore, conf configuration.Conf, rec *postgresql.SessionRecord) error {
 	form := url.Values{}
 	form.Set("grant_type", "refresh_token")
 	form.Set("refresh_token", strings.TrimSpace(rec.RefreshToken.String))
@@ -266,15 +267,6 @@ func normalizeGrantType(value string) string {
 	return v
 }
 
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
-		}
-	}
-	return ""
-}
-
 func firstNonEmptyMachineID(values ...string) string {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {
@@ -308,17 +300,8 @@ func firstAudienceClaim(claims jwt.MapClaims) string {
 	return ""
 }
 
-func firstStringClaim(claims jwt.MapClaims, keys ...string) string {
-	for _, key := range keys {
-		if value, ok := claims[key].(string); ok && strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
-		}
-	}
-	return ""
-}
-
 func isAuthorizedPathClaims(path string, claims jwt.MapClaims) bool {
-	email := firstStringClaim(claims, "email")
+	email := shared.FirstStringClaim(claims, "email")
 	if strings.TrimSpace(email) == "" {
 		return true
 	}
@@ -381,3 +364,4 @@ func writeForbidden(w http.ResponseWriter) {
 		"error": "forbidden",
 	})
 }
+

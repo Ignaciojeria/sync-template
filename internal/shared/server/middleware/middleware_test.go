@@ -11,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	outdb "app-mobile-downloader/internal/adapter/out/db"
+	"app-mobile-downloader/internal/shared"
+	"app-mobile-downloader/internal/shared/infrastructure/postgresql"
 	"app-mobile-downloader/internal/shared/configuration"
 
 	"github.com/MicahParks/jwkset"
@@ -19,7 +20,7 @@ import (
 )
 
 type fakeStore struct {
-	record    outdb.SessionRecord
+	record    postgresql.SessionRecord
 	findErr   error
 	updateErr error
 	updated   struct {
@@ -32,7 +33,7 @@ type fakeStore struct {
 	}
 }
 
-func (f *fakeStore) FindActiveSessionByID(sessionID string) (outdb.SessionRecord, error) {
+func (f *fakeStore) FindActiveSessionByID(sessionID string) (postgresql.SessionRecord, error) {
 	return f.record, f.findErr
 }
 
@@ -148,17 +149,17 @@ func TestFirstAudienceClaim(t *testing.T) {
 
 func TestFirstStringClaim(t *testing.T) {
 	claims := jwt.MapClaims{"name": "", "email": " user@example.com "}
-	if got := firstStringClaim(claims, "name", "email"); got != "user@example.com" {
-		t.Fatalf("firstStringClaim() = %q", got)
+	if got := shared.FirstStringClaim(claims, "name", "email"); got != "user@example.com" {
+		t.Fatalf("shared.FirstStringClaim() = %q", got)
 	}
 }
 
 func TestFirstNonEmptyHelpers(t *testing.T) {
-	if got := firstNonEmpty(" ", "value"); got != "value" {
-		t.Fatalf("firstNonEmpty() = %q", got)
+	if got := shared.FirstNonEmpty(" ", "value"); got != "value" {
+		t.Fatalf("shared.FirstNonEmpty() = %q", got)
 	}
-	if got := firstNonEmpty(" ", "\t"); got != "" {
-		t.Fatalf("firstNonEmpty() = %q, want empty string", got)
+	if got := shared.FirstNonEmpty(" ", "\t"); got != "" {
+		t.Fatalf("shared.FirstNonEmpty() = %q, want empty string", got)
 	}
 	if got := firstNonEmptyMachineID(" ", "machine-1"); got != "machine-1" {
 		t.Fatalf("firstNonEmptyMachineID() = %q", got)
@@ -267,7 +268,7 @@ func TestClaimsFromSessionCookie(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/private", nil)
 		req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "sid-1"})
 		rr := httptest.NewRecorder()
-		store := &fakeStore{record: outdb.SessionRecord{ID: "sid-1", Subject: "sub-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}, ExpiresAt: sql.NullTime{Time: time.Now().Add(-time.Minute), Valid: true}}}
+		store := &fakeStore{record: postgresql.SessionRecord{ID: "sid-1", Subject: "sub-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}, ExpiresAt: sql.NullTime{Time: time.Now().Add(-time.Minute), Valid: true}}}
 		if claims, ok := claimsFromSessionCookie(req, rr, store, configuration.Conf{}); ok || claims != nil {
 			t.Fatal("expected no claims without token endpoint for expired session")
 		}
@@ -277,7 +278,7 @@ func TestClaimsFromSessionCookie(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/private", nil)
 		req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "sid-1"})
 		rr := httptest.NewRecorder()
-		store := &fakeStore{record: outdb.SessionRecord{ID: "sid-1", Subject: "sub-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}, ExpiresAt: sql.NullTime{Time: time.Now().Add(-time.Minute), Valid: true}}}
+		store := &fakeStore{record: postgresql.SessionRecord{ID: "sid-1", Subject: "sub-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}, ExpiresAt: sql.NullTime{Time: time.Now().Add(-time.Minute), Valid: true}}}
 		conf := configuration.Conf{OIDCTokenEndpoint: "http://127.0.0.1:0/token", OIDCClientID: "client"}
 		if claims, ok := claimsFromSessionCookie(req, rr, store, conf); ok || claims != nil {
 			t.Fatal("expected no claims when refresh fails")
@@ -288,7 +289,7 @@ func TestClaimsFromSessionCookie(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/private", nil)
 		req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "sid-1"})
 		rr := httptest.NewRecorder()
-		store := &fakeStore{record: outdb.SessionRecord{ID: "sid-1", Subject: "sub-1", Email: sql.NullString{String: " user@example.com ", Valid: true}, DisplayName: sql.NullString{String: " User ", Valid: true}}}
+		store := &fakeStore{record: postgresql.SessionRecord{ID: "sid-1", Subject: "sub-1", Email: sql.NullString{String: " user@example.com ", Valid: true}, DisplayName: sql.NullString{String: " User ", Valid: true}}}
 		claims, ok := claimsFromSessionCookie(req, rr, store, configuration.Conf{})
 		if !ok {
 			t.Fatal("expected claims from valid session")
@@ -303,7 +304,7 @@ func TestRefreshSessionTokens(t *testing.T) {
 	t.Run("http error", func(t *testing.T) {
 		store := &fakeStore{}
 		conf := configuration.Conf{OIDCTokenEndpoint: "http://127.0.0.1:0/token", OIDCClientID: "client"}
-		rec := &outdb.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}}
+		rec := &postgresql.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}}
 		if err := refreshSessionTokens(store, conf, rec); err == nil {
 			t.Fatal("expected http error")
 		}
@@ -316,7 +317,7 @@ func TestRefreshSessionTokens(t *testing.T) {
 		defer ts.Close()
 		store := &fakeStore{}
 		conf := configuration.Conf{OIDCTokenEndpoint: ts.URL, OIDCClientID: "client"}
-		rec := &outdb.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}}
+		rec := &postgresql.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}}
 		if err := refreshSessionTokens(store, conf, rec); err == nil {
 			t.Fatal("expected non-2xx error")
 		}
@@ -329,7 +330,7 @@ func TestRefreshSessionTokens(t *testing.T) {
 		defer ts.Close()
 		store := &fakeStore{}
 		conf := configuration.Conf{OIDCTokenEndpoint: ts.URL, OIDCClientID: "client"}
-		rec := &outdb.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}}
+		rec := &postgresql.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}}
 		if err := refreshSessionTokens(store, conf, rec); err == nil {
 			t.Fatal("expected empty access token error")
 		}
@@ -342,7 +343,7 @@ func TestRefreshSessionTokens(t *testing.T) {
 		defer ts.Close()
 		store := &fakeStore{updateErr: errors.New("update failed")}
 		conf := configuration.Conf{OIDCTokenEndpoint: ts.URL, OIDCClientID: "client"}
-		rec := &outdb.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}}
+		rec := &postgresql.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}}
 		if err := refreshSessionTokens(store, conf, rec); err == nil {
 			t.Fatal("expected update error")
 		}
@@ -355,7 +356,7 @@ func TestRefreshSessionTokens(t *testing.T) {
 		defer ts.Close()
 		store := &fakeStore{}
 		conf := configuration.Conf{OIDCTokenEndpoint: ts.URL, OIDCClientID: "client", OIDCClientSecret: "secret"}
-		rec := &outdb.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}, IDToken: sql.NullString{String: "old-id", Valid: true}}
+		rec := &postgresql.SessionRecord{ID: "sid-1", RefreshToken: sql.NullString{String: "refresh", Valid: true}, IDToken: sql.NullString{String: "old-id", Valid: true}}
 		if err := refreshSessionTokens(store, conf, rec); err != nil {
 			t.Fatalf("refreshSessionTokens() error = %v", err)
 		}
@@ -460,7 +461,7 @@ func TestJWTMiddleware(t *testing.T) {
 
 	t.Run("session store claims unauthorized path returns forbidden", func(t *testing.T) {
 		t.Setenv("AUTH_DISABLED", "false")
-		store := &fakeStore{record: outdb.SessionRecord{ID: "sid-1", Subject: "sub-1", Email: sql.NullString{String: "unknown@example.com", Valid: true}}}
+		store := &fakeStore{record: postgresql.SessionRecord{ID: "sid-1", Subject: "sub-1", Email: sql.NullString{String: "unknown@example.com", Valid: true}}}
 		handler := JWTMiddleware(nil, store, configuration.Conf{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Fatal("next handler should not be called")
 		}))
@@ -476,7 +477,7 @@ func TestJWTMiddleware(t *testing.T) {
 
 	t.Run("session store claims authorized path reaches next", func(t *testing.T) {
 		t.Setenv("AUTH_DISABLED", "false")
-		store := &fakeStore{record: outdb.SessionRecord{ID: "sid-1", Subject: "sub-1", Email: sql.NullString{String: "ignaciovl.j@gmail.com", Valid: true}}}
+		store := &fakeStore{record: postgresql.SessionRecord{ID: "sid-1", Subject: "sub-1", Email: sql.NullString{String: "ignaciovl.j@gmail.com", Valid: true}}}
 		called := false
 		handler := JWTMiddleware(nil, store, configuration.Conf{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			called = true
@@ -522,3 +523,5 @@ func assertJSONError(t *testing.T, rr *httptest.ResponseRecorder, want string) {
 		t.Fatalf("error = %q, want %q", body["error"], want)
 	}
 }
+
+

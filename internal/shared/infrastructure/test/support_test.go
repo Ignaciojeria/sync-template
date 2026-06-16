@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"app-mobile-downloader/templates"
+	"app-mobile-downloader/internal/dev/ui"
 )
 
 func TestFilterCoverageFile(t *testing.T) {
@@ -172,7 +172,7 @@ func TestSaveAndLoadLastRunState(t *testing.T) {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 
-	want := templates.TestRunState{
+	want := ui.TestRunState{
 		Success:      true,
 		Output:       "all good",
 		CoverPath:    "/report/tests/coverage.html?t=123",
@@ -189,7 +189,7 @@ func TestSaveAndLoadLastRunState(t *testing.T) {
 		t.Fatalf("loaded state = %+v, want %+v", got, want)
 	}
 
-	if err := SaveLastRunState(templates.TestRunState{CoverPercent: math.NaN()}); err == nil {
+	if err := SaveLastRunState(ui.TestRunState{CoverPercent: math.NaN()}); err == nil {
 		t.Fatal("expected marshal error for NaN coverage percent")
 	}
 }
@@ -213,13 +213,13 @@ func TestLoadLastRunStateInvalidJSON(t *testing.T) {
 	}
 
 	got := LoadLastRunState()
-	if got != (templates.TestRunState{}) {
+	if got != (ui.TestRunState{}) {
 		t.Fatalf("expected zero value state, got %+v", got)
 	}
 
 	_ = os.Remove(filepath.Join(CoverageDir, "last_run.json"))
 	got = LoadLastRunState()
-	if got != (templates.TestRunState{}) {
+	if got != (ui.TestRunState{}) {
 		t.Fatalf("expected zero value state when file is missing, got %+v", got)
 	}
 }
@@ -270,3 +270,5 @@ func TestEnsureCoverageDir(t *testing.T) {
 		}
 	})
 }
+
+

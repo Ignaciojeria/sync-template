@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"app-mobile-downloader/internal/shared"
 	"app-mobile-downloader/internal/shared/configuration"
 
 	"github.com/go-fuego/fuego"
@@ -50,11 +51,11 @@ func TestNew(t *testing.T) {
 }
 
 func TestFirstNonEmpty(t *testing.T) {
-	if got := firstNonEmpty(" ", " value ", "other"); got != "value" {
-		t.Fatalf("firstNonEmpty() = %q", got)
+	if got := shared.FirstNonEmpty(" ", " value ", "other"); got != "value" {
+		t.Fatalf("shared.FirstNonEmpty() = %q", got)
 	}
-	if got := firstNonEmpty(" ", "\t"); got != "" {
-		t.Fatalf("firstNonEmpty() = %q, want empty string", got)
+	if got := shared.FirstNonEmpty(" ", "\t"); got != "" {
+		t.Fatalf("shared.FirstNonEmpty() = %q, want empty string", got)
 	}
 }
 
@@ -109,3 +110,4 @@ func TestStartServerRegistersShutdownHook(t *testing.T) {
 		t.Fatalf("shutdown hook returned error: %v", err)
 	}
 }
+

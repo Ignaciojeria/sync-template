@@ -1,0 +1,72 @@
+package ui
+
+import "strconv"
+
+templ DashboardStats(state TestRunState) {
+	<div id="dashboard-stats" class="stats stats-horizontal shadow bg-base-100 w-full">
+		<div class="stat">
+			<div class="stat-title">Estado</div>
+			<div class="stat-value text-lg">
+				if state.HasResult {
+					<span class={ statusBadgeClass(state.Success) }>{ statusLabel(state.Success) }</span>
+				} else {
+					<span class="badge badge-ghost">Sin ejecutar</span>
+				}
+			</div>
+			<div class="stat-desc">Resultado de la última ejecución</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">Última Ejecución</div>
+			<div class="stat-value text-lg">{ formatTimestamp(state.Timestamp) }</div>
+			<div class="stat-desc">Fecha y hora local</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">Cobertura</div>
+			<div class="stat-value text-lg">
+				if state.HasResult {
+					<div class="space-y-2">
+						<div class="flex flex-wrap items-center gap-3">
+							<span class={ coverBadgeClass(state.CoverPercent) }>{ strconv.FormatFloat(state.CoverPercent, 'f', 1, 64) + "%" }</span>
+							if state.CoverPath != "" {
+								<a href={ templ.SafeURL(state.CoverPath) } target="_blank" class="link link-primary text-sm">Ver reporte</a>
+							}
+						</div>
+						<progress class={ coverProgressClass(state.CoverPercent) + " w-full max-w-xs" } value={ strconv.FormatFloat(state.CoverPercent, 'f', 1, 64) } max="100"></progress>
+					</div>
+				} else {
+					<span class="text-base-content/30">—</span>
+				}
+			</div>
+			<div class="stat-desc">Porcentaje de cobertura de código</div>
+		</div>
+	</div>
+}
+
+templ TestResult(success bool, output string, coverPath string, coverPercent float64) {
+	<div class="space-y-4">
+		<div class="card bg-base-100 shadow-sm border">
+			<div class="card-body">
+				<div class="flex items-center justify-between mb-2 gap-3">
+					<h2 class="card-title text-sm font-semibold uppercase tracking-wide text-base-content/60">Resumen</h2>
+					if coverPercent > 0 {
+						<span class={ coverBadgeClass(coverPercent) }>{ strconv.FormatFloat(coverPercent, 'f', 1, 64) + "%" }</span>
+					}
+				</div>
+				if coverPercent > 0 {
+					<progress class={ coverProgressClass(coverPercent) + " w-full" } value={ strconv.FormatFloat(coverPercent, 'f', 1, 64) } max="100"></progress>
+				}
+				<div class="mockup-code bg-base-300 text-base-content mt-2">
+					<pre><code>{ output }</code></pre>
+				</div>
+			</div>
+		</div>
+		if coverPath != "" {
+			<div class="card bg-base-100 shadow-sm border">
+				<div class="card-body">
+					<h2 class="card-title text-sm font-semibold uppercase tracking-wide text-base-content/60">Cobertura Detallada</h2>
+					<iframe src={ templ.SafeURL(coverPath) } class="w-full h-[600px] border rounded-lg mt-2" title="Reporte de Cobertura"></iframe>
+				</div>
+			</div>
+		}
+	</div>
+}

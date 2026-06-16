@@ -6,10 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "app-mobile-downloader/internal/application/test_report"
+	_ "app-mobile-downloader/internal/app/http"
+	_ "app-mobile-downloader/internal/dev/application/test_report"
+	_ "app-mobile-downloader/internal/dev/http"
+	_ "app-mobile-downloader/internal/editor/http"
 	_ "app-mobile-downloader/internal/shared/jwks"
 	_ "app-mobile-downloader/internal/shared/server"
-	_ "app-mobile-downloader/internal/adapter/in/web"
 	_ "app-mobile-downloader/internal/shared/infrastructure/postgresql"
 
 	"github.com/Ignaciojeria/ioc"
@@ -28,3 +30,4 @@ func main() {
 		log.Fatalf("Shutdown errors: %v", err)
 	}
 }
+

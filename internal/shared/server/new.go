@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	outdb "app-mobile-downloader/internal/adapter/out/db"
 	"app-mobile-downloader/internal/shared/configuration"
+	"app-mobile-downloader/internal/shared/infrastructure/postgresql"
 	"app-mobile-downloader/internal/shared/server/middleware"
 
 	"github.com/Ignaciojeria/ioc"
@@ -21,7 +21,7 @@ type Server struct {
 	*fuego.Server
 }
 
-func New(conf configuration.Conf, jwks keyfunc.Keyfunc, store *outdb.SessionStore) *Server {
+func New(conf configuration.Conf, jwks keyfunc.Keyfunc, store *postgresql.SessionStore) *Server {
 	server := fuego.NewServer(fuego.WithAddr(":" + strings.TrimSpace(conf.PORT)))
 	fuego.Use(server, middleware.JWTMiddleware(
 		jwks,
@@ -58,11 +58,4 @@ func shutdownHook(server interface{ Shutdown(context.Context) error }) func() er
 	}
 }
 
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
-		}
-	}
-	return ""
-}
+
