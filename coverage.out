@@ -1,0 +1,9 @@
+mode: set
+app-mobile-downloader/internal/shared/access/allowlist.go:5.43,7.17 2 1
+app-mobile-downloader/internal/shared/access/allowlist.go:7.17,9.3 1 1
+app-mobile-downloader/internal/shared/access/allowlist.go:10.2,11.11 2 1
+app-mobile-downloader/internal/shared/access/allowlist.go:14.46,16.17 2 1
+app-mobile-downloader/internal/shared/access/allowlist.go:16.17,18.3 1 0
+app-mobile-downloader/internal/shared/access/allowlist.go:19.2,20.11 2 1
+app-mobile-downloader/internal/shared/access/allowlist.go:23.43,25.2 1 1
+app-mobile-downloader/internal/shared/access/allowlist.go:27.42,29.2 1 1

@@ -1,0 +1,14 @@
+root = "."
+
+tmp_dir = "tmp"
+
+[build]
+  cmd = "sh -c 'templ generate && if [ -f ./cmd/api/main.go ]; then go build -o ./tmp/main ./cmd/api; elif [ -f ./cmd/main.go ]; then go build -o ./tmp/main ./cmd; else go build -o ./tmp/main .; fi'"
+  bin = "./tmp/main"
+  include_ext = ["go", "templ", "tpl", "tmpl", "html"]
+  exclude_ext = ["_templ.go"]
+  exclude_dir = ["assets", "tmp", "vendor", "node_modules", ".git", ".einar"]
+  delay = 500
+
+[log]
+  time = true

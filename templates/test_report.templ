@@ -1,0 +1,189 @@
+package templates
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"time"
+)
+
+type TestRunState struct {
+	Success       bool
+	Output        string
+	CoverPath     string
+	CoverPercent  float64
+	Timestamp     time.Time
+	HasResult     bool
+}
+
+func formatTimestamp(t time.Time) string {
+	if t.IsZero() {
+		return "Nunca"
+	}
+	return t.Format("02/01/2006 15:04")
+}
+
+func statusLabel(success bool) string {
+	if success {
+		return "Éxito"
+	}
+	return "Fallido"
+}
+
+func statusBadgeClass(success bool) string {
+	if success {
+		return "badge badge-success"
+	}
+	return "badge badge-error"
+}
+
+func parseCoveragePercent(output string) float64 {
+	re := regexp.MustCompile(`coverage:\s*([0-9]+\.[0-9]+)%`)
+	matches := re.FindStringSubmatch(output)
+	if len(matches) >= 2 {
+		p, _ := strconv.ParseFloat(matches[1], 64)
+		return p
+	}
+	return 0
+}
+
+func coverColorClass(percent float64) string {
+	if percent >= 80 {
+		return "text-success"
+	}
+	if percent >= 50 {
+		return "text-warning"
+	}
+	return "text-error"
+}
+
+func coverProgressClass(percent float64) string {
+	if percent >= 80 {
+		return "progress progress-success"
+	}
+	if percent >= 50 {
+		return "progress progress-warning"
+	}
+	return "progress progress-error"
+}
+
+func coverBadgeClass(percent float64) string {
+	if percent >= 80 {
+		return "badge badge-success badge-sm"
+	}
+	if percent >= 50 {
+		return "badge badge-warning badge-sm"
+	}
+	return "badge badge-error badge-sm"
+}
+
+var TestButtonAttrs = templ.Attributes{
+	"hx-post":          "/report/tests/run",
+	"hx-target":        "#test-result",
+	"hx-swap":          "innerHTML",
+	"hx-indicator":     "#loading",
+	"hx-disabled-elt":  "this",
+	"hx-select-oob":    "#dashboard-stats:outerHTML",
+}
+
+templ TestReportPage(state TestRunState) {
+	@Layout("Reporte de Tests") {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-2xl font-bold tracking-tight">Reporte de Tests</h1>
+					<p class="text-sm text-base-content/60">Panel de control de calidad y cobertura de código</p>
+				</div>
+				<div class="flex items-center gap-3">
+					<button class="btn btn-primary btn-sm" { TestButtonAttrs... }>
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+						Ejecutar
+					</button>
+					<span id="loading" class="loading loading-spinner loading-sm htmx-indicator"></span>
+				</div>
+			</div>
+
+			@DashboardStats(state)
+
+			<div id="test-result">
+				if state.HasResult {
+					@TestResult(state.Success, state.Output, state.CoverPath, state.CoverPercent)
+				} else {
+					<div class="alert alert-info">
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+						<span>Presiona "Ejecutar" para correr los tests y generar el reporte.</span>
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+
+templ DashboardStats(state TestRunState) {
+	<div id="dashboard-stats" class="stats stats-horizontal shadow bg-base-100 w-full">
+		<div class="stat">
+			<div class="stat-title">Estado</div>
+			<div class="stat-value text-lg">
+				if state.HasResult {
+					<span class={ statusBadgeClass(state.Success) }>{ statusLabel(state.Success) }</span>
+				} else {
+					<span class="badge badge-ghost">Sin ejecutar</span>
+				}
+			</div>
+			<div class="stat-desc">Resultado de la última ejecución</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">Última Ejecución</div>
+			<div class="stat-value text-lg">{ formatTimestamp(state.Timestamp) }</div>
+			<div class="stat-desc">Fecha y hora local</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">Cobertura</div>
+			<div class="stat-value text-lg">
+				if state.HasResult {
+					<div class="space-y-2">
+						<div class="flex flex-wrap items-center gap-3">
+							<span class={ coverBadgeClass(state.CoverPercent) }>{ fmt.Sprintf("%.1f%%", state.CoverPercent) }</span>
+							if state.CoverPath != "" {
+								<a href={ templ.SafeURL(state.CoverPath) } target="_blank" class="link link-primary text-sm">Ver reporte</a>
+							}
+						</div>
+						<progress class={ coverProgressClass(state.CoverPercent) + " w-full max-w-xs" } value={ fmt.Sprintf("%.1f", state.CoverPercent) } max="100"></progress>
+					</div>
+				} else {
+					<span class="text-base-content/30">—</span>
+				}
+			</div>
+			<div class="stat-desc">Porcentaje de cobertura de código</div>
+		</div>
+	</div>
+}
+
+templ TestResult(success bool, output string, coverPath string, coverPercent float64) {
+	<div class="space-y-4">
+		<div class="card bg-base-100 shadow-sm border">
+			<div class="card-body">
+				<div class="flex items-center justify-between mb-2 gap-3">
+					<h2 class="card-title text-sm font-semibold uppercase tracking-wide text-base-content/60">Resumen</h2>
+					if coverPercent > 0 {
+						<span class={ coverBadgeClass(coverPercent) }>{ fmt.Sprintf("%.1f%%", coverPercent) }</span>
+					}
+				</div>
+				if coverPercent > 0 {
+					<progress class={ coverProgressClass(coverPercent) + " w-full" } value={ fmt.Sprintf("%.1f", coverPercent) } max="100"></progress>
+				}
+				<div class="mockup-code bg-base-300 text-base-content mt-2">
+					<pre><code>{ output }</code></pre>
+				</div>
+			</div>
+		</div>
+		if coverPath != "" {
+			<div class="card bg-base-100 shadow-sm border">
+				<div class="card-body">
+					<h2 class="card-title text-sm font-semibold uppercase tracking-wide text-base-content/60">Cobertura Detallada</h2>
+					<iframe src={ templ.SafeURL(coverPath) } class="w-full h-[600px] border rounded-lg mt-2" title="Reporte de Cobertura"></iframe>
+				</div>
+			</div>
+		}
+	</div>
+}

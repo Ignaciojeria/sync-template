@@ -1,0 +1,12 @@
+sync:
+  defaults:
+    mode: "two-way-resolved"
+    ignore:
+      vcs: true
+      paths:
+        - "node_modules"
+        - ".git"
+
+  app-mobile-downloader:
+    alpha: "."
+    beta: "exedev@app-mobile-downloader.exe.xyz:/home/exedev/workspace/app-mobile-downloader"
